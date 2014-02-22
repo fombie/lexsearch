@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>demo of lexsearch.js [nodejs]</title>    
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+<script type="text/javascript" src="//code.jquery.com/jquery-1.10.2.min.js" ></script> 
+<script>
+$(document).ready(function() {
+ document.onkeydown = function (e) {
+    var keycode;
+    if (window.event) keycode = window.event.keyCode;
+    else if (e) keycode = e.which;
+   if (keycode==13) {
+         execSearch();
+         return false;
+    }
+}
+  });
+</script>
+<style>
+ body { background: #ddd ; margin-top:32px; color: gray; font-family: tahoma,verdana,arial,sans-serif; font-size: 12px;   line-height: 1;}
+.round {-moz-border-radius-bottomleft: 5px; -moz-border-radius-bottomright: 5px; -moz-border-radius-topleft: 5px; -moz-border-radius-topright: 5px; -webkit-border-bottom-right-radius:5px 5px; -webkit-border-bottom-left-radius:5px 5px; -webkit-border-top-right-radius:5px 5px;-webkit-border-top-left-radius:5px 5px;}      
+ span.logo{color:black;font-size:20px; letter-spacing: 4px;font-weight: bolder; position:absolute;top:-28px;left:180px }
+ div.main_container {margin:0px auto;border: 0px solid gray; width : 760px; margin-top: 0px;background-color: white;position:relative}
+ div.form_elements {border: 0px solid black; width : 350px; padding: 5px;padding-left: 30px; position:relative}
+ div.buttondiv {border: 1px solid black; width : 350px;padding: 10px;position:absolute;top:15px; right: 10px }
+div.inputdiv{display: table-row}
+span.fieldlit{color: gray;display: table-cell}
+input, select {border: 1px solid #AAAAAA;  padding: 1px; padding-top: 2px;margin-left: 10px;font-size: 13px; font-weight: bold;letter-spacing:1px; }
+input{font-size: 16px; font-weight: normal;letter-spacing: 3px;  }
+div.buttondiv {border: 0px solid black; width : 300px;padding: 10px;position:absolute;top:15px; right: 30px;text-align: center}
+input.buttonsearch {font-weight: bolder; font-size: 17px; color: black; border: 1px solid black; cursor: pointer;padding: 8px; padding-bottom: 5px;  padding-top: 5px; }
+div.QuickHelp{margin-top:15px;border: 0px solid red;font-size: 11px; color: gray; padding: 3px; display:block;  height:40px; text-align: center}
+div.results_area_div {padding: 10px; padding-top:0px; }      
+div.results_title_div{ background-color: lightgrey;border-top:2px double gray; padding:5px; padding-left: 10px;color:white; font-size:15px ; letter-spacing: 2px; font-weight: bold;}
+div.resContainer{display:block; border:  0px solid red;padding:3px;border-top: 1px solid gray; }
+div.ResTitle{border:0px solid black; width:50px;display: table-cell;text-align: center; vertical-align: middle; font-size: 15px; font-weight: bolder}
+div.ResData{border:0px solid orange; width:680px;display: table-cell;padding:3px; line-height: 1.6; font-size: 12px; letter-spacing: 1px; padding-bottom: 10px}
+</style>
+</head>
+<body>
+    <div class="main_container round"> 
+        <span class="logo" >Demo of lexsearch.js [nodejs]</span>
+        <div class="form_elements"  >
+            <div class="inputdiv">            
+           <span class="fieldlit" >search method </span>
+           <select id="fldSearchMethod" class="round" ><option value="scr" selected="selected">scrabble</option><option value="con">contains</option><option value="sta">starts with</option><option value="end">ends with</option><option value="exp">exact position</option></select> 
+           </div>
+           <div class="inputdiv"> 
+           <span class="fieldlit" >letters for scrabbling</span>   
+           <input id="fldLetter" class="round" type="text"  value="" />
+           </div>
+           <div class="inputdiv"> 
+           <span class="fieldlit" >extra pattern</span>  
+           <input id="fldCriteria" class ="round"  placeholder="optional" type="text"  value=""  />
+           </div>
+           <div class="inputdiv"> 
+           <span class="fieldlit" >length</span>   
+           <select id="fldLength" class="round"><option value="0" >any</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+           </div> 
+           <div class="inputdiv"> 
+           <span class="fieldlit" >sort result </span><select id="fldUserView" class="round" ><option selected="selected" value="0" >by length</option><option value="1" >by A - Z</option></select>
+           </div>
+        </div>  
+         <div class="buttondiv">
+          <input type="button" class="buttonsearch round" value="search" id="ButSearch" onclick="execSearch();return false"  />
+            <div id="fldQuickHelp" class="QuickHelp"></div>
+         </div>
+             <div class="results_area_div"> 
+             <div class="results_title_div">results</div> 
+              <div id ="ResultArea" class="mainTresult" style="min-height:300px"></div>   
+         </div>             
+    </div>
+
+
+<script>
+var _lexResult;
+var  _request_pending=false;
+function execSearch(){
+   method=$("#fldSearchMethod").val();
+   letter=$.trim($("#fldLetter").val());
+   pattern=$.trim($("#fldCriteria").val());
+   len=parseInt($("#fldLength").val());
+   remoteCall({lexjs:1, letter:letter, pattern:pattern, len:len, method:method},
+        function (data) {
+              var objret = $.parseJSON(data);
+			 if (objret.rc==1) {
+                if(objret.result){
+                _lexResult=objret.result;
+                $("#fldQuickHelp").html(objret.explain.replace(/[~]/g,"<br />"));    
+                viewReturnedResult($('#fldUserView').val() )
+                }else{
+                  $('<div class="resContainer errortxt" style="color:inherit">words not found</div>').appendTo( "#ResultArea" );
+                }
+            } else {
+                ShowErrorToclient(objret.errmsg);
+            }
+        }, 
+        function () {
+           console.log("Failure") ;
+        });
+    post_execution_actions();
+}
+
+
+
+function viewReturnedResult(view){
+    $("#ResultArea").html('');
+    if(!_lexResult) return false;
+    
+    if(typeof _lexResult === 'string' ) {
+        addResultSet('',_lexResult);
+        return false;
+     }
+    
+    var Result=_lexResult;
+    var cnt=Result.length;
+
+    var i=0, prv_chr="*", ff=0, res="", initArr=25, Texec=""; 
+           var Lresult=new Array();
+            var LresAZ=new Array();
+            for(i=0; i<=initArr;i++){ Lresult[i]="";LresAZ[i]="";}
+             
+            if(view==1) Result.sort(); //a-Z       
+            if (view==0) {Trowl='length';} else {Trowl='a - z';}
+          
+            for (ww in Result){
+                    res=Result[ww];
+                 if (res!="" && res!=" "){
+                    rescc=res+"  ";
+                    if (view==0) { //length
+                          Lresult[res.length]+=rescc;
+                     }
+                    if (view==1) { //A - Z
+                          ca=res.charAt(0);
+                          if (prv_chr!=ca){
+                             prv_chr=ca;
+                             ff++;
+                             LresAZ[ff]=ca;
+                          }
+                          if( ca>""){
+                             Lresult[ff]=Lresult[ff]+rescc;
+                          }
+                      }  
+                }
+            }
+            //sorting desc - asc
+            if(view==0){
+                for (i=initArr;i>0;i--){
+                    if (Lresult[i]!=""){
+                          addResultSet(i,Lresult[i]);
+                      }    
+                   }
+            } else {
+                for (i=1;i<=initArr;i++){
+                    if (Lresult[i]!=""){
+                         addResultSet(LresAZ[i],Lresult[i]);
+                    }
+                   }
+              }
+    }
+
+ function addResultSet(title, text){
+  $('<div class="resContainer"><div class="ResTitle" >'+title+'</div><div class="ResData" >'+text+'</div></div>').appendTo( "#ResultArea" );
+ }
+function pre_execution_actions(){
+       $("#ButSearch").prop('disabled', true).css({cursor:'wait'}); 
+       $("#ResultArea").html('');
+ }
+function post_execution_actions(){
+       $("#ButSearch").prop('disabled', false).css({cursor:'pointer'});
+}
+
+function ShowErrorToclient(errortxt){
+     $("#ResultArea").html('');
+     $('<div class="resContainer errortxt">error: '+errortxt+'</div>').appendTo( "#ResultArea" );
+}
+function remoteCall(params, ondone, onerror) {
+    if (_request_pending) {return false;}
+    _request_pending = true;
+    var __ajax = $.ajax({
+        type: "GET",
+        url: "index.html",
+        dataType: "html",
+        data: params,
+        success: function (data, status) {
+            if (ondone) ondone (data);
+        },
+        error: function (x, t, e) { 
+           alert("t:" +t+ ", e:" +e);
+           if (onerror) onerror ()
+        }
+    });
+    _request_pending = false;  
+    return true;
+}
+
+</script>
+</body>
+</html>
+  
